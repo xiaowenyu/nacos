@@ -129,6 +129,7 @@ public class InstanceController {
      * @return 'ok' if success
      * @throws Exception any error during register
      */
+    // 服务注册入口
     @CanDistro
     @PostMapping
     @Secured(parser = NamingResourceParser.class, action = ActionTypes.WRITE)
@@ -138,9 +139,11 @@ public class InstanceController {
                 .optional(request, CommonParams.NAMESPACE_ID, Constants.DEFAULT_NAMESPACE_ID);
         final String serviceName = WebUtils.required(request, CommonParams.SERVICE_NAME);
         NamingUtils.checkServiceNameFormat(serviceName);
-        
+
+        // 解析请求
         final Instance instance = parseInstance(request);
-        
+
+        // 注册服务
         serviceManager.registerInstance(namespaceId, serviceName, instance);
         return "ok";
     }
@@ -379,6 +382,7 @@ public class InstanceController {
      * @return list of instance
      * @throws Exception any error during list
      */
+    // 获取服务列表
     @GetMapping("/list")
     @Secured(parser = NamingResourceParser.class, action = ActionTypes.READ)
     public ObjectNode list(HttpServletRequest request) throws Exception {
@@ -399,7 +403,8 @@ public class InstanceController {
         String tenant = WebUtils.optional(request, "tid", StringUtils.EMPTY);
         
         boolean healthyOnly = Boolean.parseBoolean(WebUtils.optional(request, "healthyOnly", "false"));
-        
+
+        // 获取服务列表
         return doSrvIpxt(namespaceId, serviceName, agent, clusters, clientIP, udpPort, env, isCheck, app, tenant,
                 healthyOnly);
     }
@@ -673,6 +678,7 @@ public class InstanceController {
         
         // now try to enable the push
         try {
+            // 端口开放且客户端支持推送
             if (udpPort > 0 && pushService.canEnablePush(agent)) {
                 
                 pushService
@@ -700,10 +706,12 @@ public class InstanceController {
         checkIfDisabled(service);
         
         List<Instance> srvedIPs;
-        
+
+        // 获取服务ip列表
         srvedIPs = service.srvIPs(Arrays.asList(StringUtils.split(clusters, ",")));
         
         // filter ips using selector:
+        // 过滤ip 默认无策略
         if (service.getSelector() != null && StringUtils.isNotBlank(clientIP)) {
             srvedIPs = service.getSelector().select(clientIP, srvedIPs);
         }
@@ -736,7 +744,8 @@ public class InstanceController {
         Map<Boolean, List<Instance>> ipMap = new HashMap<>(2);
         ipMap.put(Boolean.TRUE, new ArrayList<>());
         ipMap.put(Boolean.FALSE, new ArrayList<>());
-        
+
+        // 区分正常和异常服务ip
         for (Instance ip : srvedIPs) {
             ipMap.get(ip.isHealthy()).add(ip);
         }

@@ -160,6 +160,7 @@ public class HostReactor implements Closeable {
      * @param json service json
      * @return service info
      */
+    // 处理推送的json或者拉取的json
     public ServiceInfo processServiceJson(String json) {
         ServiceInfo serviceInfo = JacksonUtils.toObj(json, ServiceInfo.class);
         String serviceKey = serviceInfo.getKey();
@@ -485,10 +486,4 @@ public class HostReactor implements Closeable {
                 resetFailCount();
             } catch (Throwable e) {
                 incFailCount();
-                NAMING_LOGGER.warn("[NA] failed to update serviceName: " + serviceName, e);
-            } finally {
-                executor.schedule(this, Math.min(delayTime << failCount, DEFAULT_DELAY * 60), TimeUnit.MILLISECONDS);
-            }
-        }
-    }
-}
+                NAMING_LOGGER.warn("[NA] failed to update serviceName: " + serv

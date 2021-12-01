@@ -293,6 +293,7 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
      * Init service.
      */
     public void init() {
+        // 心跳检查 5秒钟一次
         HealthCheckReactor.scheduleCheck(clientBeatCheckTask);
         for (Map.Entry<String, Cluster> entry : clusterMap.entrySet()) {
             entry.getValue().setService(this);
@@ -365,11 +366,13 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
     public List<Instance> allIPs(List<String> clusters) {
         List<Instance> result = new ArrayList<>();
         for (String cluster : clusters) {
+            // 通过集群节点获取ip
             Cluster clusterObj = clusterMap.get(cluster);
             if (clusterObj == null) {
                 continue;
             }
-            
+
+            // 收集ip
             result.addAll(clusterObj.allIPs());
         }
         return result;

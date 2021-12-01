@@ -76,7 +76,8 @@ public class NacosNamingService implements NamingService {
         properties.setProperty(PropertyKeyConst.SERVER_ADDR, serverList);
         init(properties);
     }
-    
+
+    // nacos客户端初始化入口
     public NacosNamingService(Properties properties) throws NacosException {
         init(properties);
     }
@@ -89,7 +90,8 @@ public class NacosNamingService implements NamingService {
         InitUtils.initWebRootContext(properties);
         initCacheDir();
         initLogName(properties);
-        
+
+        // 远程服务初始化，心跳初始化等
         this.serverProxy = new NamingProxy(this.namespace, this.endpoint, this.serverList, properties);
         this.beatReactor = new BeatReactor(this.serverProxy, initClientBeatThreadCount(properties));
         this.hostReactor = new HostReactor(this.serverProxy, beatReactor, this.cacheDir, isLoadCacheAtStart(properties),
@@ -200,12 +202,17 @@ public class NacosNamingService implements NamingService {
     public void registerInstance(String serviceName, Instance instance) throws NacosException {
         registerInstance(serviceName, Constants.DEFAULT_GROUP, instance);
     }
-    
+
+    // 客户端注册实例入口
     @Override
     public void registerInstance(String serviceName, String groupName, Instance instance) throws NacosException {
+        // 检查实例是否合法
         NamingUtils.checkInstanceIsLegal(instance);
+        // groupA@@serviceA
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
+        // 临时实例需要设置心跳
         if (instance.isEphemeral()) {
+            // 开启定时续租
             BeatInfo beatInfo = beatReactor.buildBeatInfo(groupedServiceName, instance);
             beatReactor.addBeatInfo(groupedServiceName, beatInfo);
         }
@@ -309,7 +316,8 @@ public class NacosNamingService implements NamingService {
         }
         return list;
     }
-    
+
+    // 服务发现入口
     @Override
     public List<Instance> selectInstances(String serviceName, boolean healthy) throws NacosException {
         return selectInstances(serviceName, new ArrayList<String>(), healthy);
@@ -359,6 +367,7 @@ public class NacosNamingService implements NamingService {
             serviceInfo = hostReactor.getServiceInfo(NamingUtils.getGroupedName(serviceName, groupName),
                     StringUtils.join(clusters, ","));
         } else {
+            // 不给端口
             serviceInfo = hostReactor
                     .getServiceInfoDirectlyFromServer(NamingUtils.getGroupedName(serviceName, groupName),
                             StringUtils.join(clusters, ","));

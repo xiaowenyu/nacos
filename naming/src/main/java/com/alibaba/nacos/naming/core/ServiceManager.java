@@ -499,10 +499,13 @@ public class ServiceManager implements RecordListener<Service> {
      * @param instance    instance to register
      * @throws Exception any error occurred in the process
      */
+    // 注册服务
     public void registerInstance(String namespaceId, String serviceName, Instance instance) throws NacosException {
-        
+
+        // 不存在就新建服务
         createEmptyService(namespaceId, serviceName, instance.isEphemeral());
-        
+
+        // 获取服务
         Service service = getService(namespaceId, serviceName);
         
         if (service == null) {
@@ -644,17 +647,20 @@ public class ServiceManager implements RecordListener<Service> {
      */
     public void addInstance(String namespaceId, String serviceName, boolean ephemeral, Instance... ips)
             throws NacosException {
-        
+
+        // 获得key
         String key = KeyBuilder.buildInstanceListKey(namespaceId, serviceName, ephemeral);
         
         Service service = getService(namespaceId, serviceName);
         
         synchronized (service) {
+            // 添加ip到服务列表
             List<Instance> instanceList = addIpAddresses(service, ephemeral, ips);
             
             Instances instances = new Instances();
             instances.setInstanceList(instanceList);
-            
+
+            // 添加后设置回一致性服务
             consistencyService.put(key, instances);
         }
     }
@@ -778,7 +784,8 @@ public class ServiceManager implements RecordListener<Service> {
      */
     public List<Instance> updateIpAddresses(Service service, String action, boolean ephemeral, Instance... ips)
             throws NacosException {
-        
+
+        // Compare and get new 一致性服务获取 注册信息
         Datum datum = consistencyService
                 .get(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), ephemeral));
         
@@ -811,6 +818,7 @@ public class ServiceManager implements RecordListener<Service> {
             if (UtilsAndCommons.UPDATE_INSTANCE_ACTION_REMOVE.equals(action)) {
                 instanceMap.remove(instance.getDatumKey());
             } else {
+                // 把新的值设置进去
                 Instance oldInstance = instanceMap.get(instance.getDatumKey());
                 if (oldInstance != null) {
                     instance.setInstanceId(oldInstance.getInstanceId());
@@ -884,6 +892,7 @@ public class ServiceManager implements RecordListener<Service> {
     private void putServiceAndInit(Service service) throws NacosException {
         putService(service);
         service = getService(service.getNamespaceId(), service.getName());
+        // 注册服务时初始化服务，并创建心跳
         service.init();
         consistencyService
                 .listen(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), true), service);

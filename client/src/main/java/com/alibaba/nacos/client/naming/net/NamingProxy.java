@@ -229,7 +229,8 @@ public class NamingProxy implements Closeable {
         
         NAMING_LOGGER.info("[REGISTER-SERVICE] {} registering service {} with instance: {}", namespaceId, serviceName,
                 instance);
-        
+
+        // 设置参数
         final Map<String, String> params = new HashMap<String, String>(16);
         params.put(CommonParams.NAMESPACE_ID, namespaceId);
         params.put(CommonParams.SERVICE_NAME, serviceName);
@@ -242,7 +243,8 @@ public class NamingProxy implements Closeable {
         params.put("healthy", String.valueOf(instance.isHealthy()));
         params.put("ephemeral", String.valueOf(instance.isEphemeral()));
         params.put("metadata", JacksonUtils.toJson(instance.getMetadata()));
-        
+
+        // 注册上去
         reqApi(UtilAndComs.nacosUrlInstance, params, HttpMethod.POST);
         
     }
@@ -521,6 +523,7 @@ public class NamingProxy implements Closeable {
         NacosException exception = new NacosException();
         
         if (StringUtils.isNotBlank(nacosDomain)) {
+            // 默认重试3次注册上去
             for (int i = 0; i < maxRetry; i++) {
                 try {
                     return callServer(api, params, body, nacosDomain, method);
@@ -532,6 +535,7 @@ public class NamingProxy implements Closeable {
                 }
             }
         } else {
+            // 多个server的情况下，随机取其中一个
             Random random = new Random(System.currentTimeMillis());
             int index = random.nextInt(servers.size());
             
@@ -581,6 +585,7 @@ public class NamingProxy implements Closeable {
      * @return result
      * @throws NacosException nacos exception
      */
+    // 通过httpclient 注册上去
     public String callServer(String api, Map<String, String> params, Map<String, String> body, String curServer,
             String method) throws NacosException {
         long start = System.currentTimeMillis();

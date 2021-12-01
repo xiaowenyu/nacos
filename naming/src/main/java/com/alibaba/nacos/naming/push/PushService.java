@@ -97,7 +97,8 @@ public class PushService implements ApplicationContextAware, ApplicationListener
             inThread.setDaemon(true);
             inThread.setName("com.alibaba.nacos.naming.push.receiver");
             inThread.start();
-            
+
+            // 没隔20s移除 没响应的客户端
             GlobalExecutor.scheduleRetransmitter(() -> {
                 try {
                     removeClientIfZombie();
@@ -226,12 +227,15 @@ public class PushService implements ApplicationContextAware, ApplicationListener
         
         PushClient oldClient = clients.get(client.toString());
         if (oldClient != null) {
+            // 旧的已经在了，刷新下时间
             oldClient.refresh();
         } else {
+            // 并发已经存在了，就忽略
             PushClient res = clients.putIfAbsent(client.toString(), client);
             if (res != null) {
                 Loggers.PUSH.warn("client: {} already associated with key {}", res.getAddrStr(), res.toString());
             }
+            // 正常添加进来
             Loggers.PUSH.debug("client: {} added for serviceName: {}", client.getAddrStr(), client.getServiceName());
         }
     }
@@ -585,6 +589,7 @@ public class PushService implements ApplicationContextAware, ApplicationListener
     private static Map<String, Object> prepareHostsData(PushClient client) throws Exception {
         Map<String, Object> cmd = new HashMap<String, Object>(2);
         cmd.put("type", "dom");
+        // 获取全量列表
         cmd.put("data", client.getDataSource().getData(client));
         
         return cmd;

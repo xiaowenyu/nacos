@@ -44,7 +44,8 @@ import java.security.NoSuchAlgorithmException;
  * @author mai.jh
  */
 public abstract class AbstractHttpClientFactory implements HttpClientFactory {
-    
+
+    // 初始化httpClient
     @Override
     public NacosRestTemplate createNacosRestTemplate() {
         HttpClientConfig httpClientConfig = buildHttpClientConfig();

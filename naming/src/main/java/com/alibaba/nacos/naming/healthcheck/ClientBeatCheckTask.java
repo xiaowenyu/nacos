@@ -88,6 +88,7 @@ public class ClientBeatCheckTask implements Runnable {
             
             // first set health status of instances:
             for (Instance instance : instances) {
+                // 根据时间判断是否存活
                 if (System.currentTimeMillis() - instance.getLastBeat() > instance.getInstanceHeartBeatTimeOut()) {
                     if (!instance.isMarked()) {
                         if (instance.isHealthy()) {

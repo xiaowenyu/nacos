@@ -50,7 +50,8 @@ public class PushReceiver implements Runnable, Closeable {
     private HostReactor hostReactor;
     
     private volatile boolean closed = false;
-    
+
+    // 开启udp监听服务
     public PushReceiver(HostReactor hostReactor) {
         try {
             this.hostReactor = hostReactor;
@@ -64,7 +65,8 @@ public class PushReceiver implements Runnable, Closeable {
                     return thread;
                 }
             });
-            
+
+            // 直接运行
             this.executorService.execute(this);
         } catch (Exception e) {
             NAMING_LOGGER.error("[NA] init udp socket failed", e);
@@ -79,9 +81,11 @@ public class PushReceiver implements Runnable, Closeable {
                 // byte[] is initialized with 0 full filled by default
                 byte[] buffer = new byte[UDP_MSS];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                
+
+                // 监听端口
                 udpSocket.receive(packet);
-                
+
+                // 获取并处理数据
                 String json = new String(IoUtils.tryDecompress(packet.getData()), UTF_8).trim();
                 NAMING_LOGGER.info("received push data: " + json + " from " + packet.getAddress().toString());
                 
@@ -103,7 +107,8 @@ public class PushReceiver implements Runnable, Closeable {
                     ack = "{\"type\": \"unknown-ack\"" + ", \"lastRefTime\":\"" + pushPacket.lastRefTime
                             + "\", \"data\":" + "\"\"}";
                 }
-                
+
+                // 响应回去给服务端
                 udpSocket.send(new DatagramPacket(ack.getBytes(UTF_8), ack.getBytes(UTF_8).length,
                         packet.getSocketAddress()));
             } catch (Exception e) {
