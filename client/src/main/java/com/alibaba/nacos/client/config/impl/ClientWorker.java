@@ -133,7 +133,9 @@ public class ClientWorker implements Closeable {
         group = blank2defaultGroup(group);
         String tenant = agent.getTenant();
         CacheData cache = addCacheDataIfAbsent(dataId, group, tenant);
+        // 设置内容和摘要
         cache.setContent(content);
+        // 添加监听器
         for (Listener listener : listeners) {
             cache.addListener(listener);
         }
@@ -228,6 +230,7 @@ public class ClientWorker implements Closeable {
                 String[] ct = getServerConfig(dataId, group, tenant, 3000L);
                 cacheData.setContent(ct[0]);
             }
+            // 设置任务id
             int taskId = cacheMap.size() / (int) ParamUtil.getPerTaskConfigSize();
             cacheData.setTaskId(taskId);
             lastCacheData = cacheData;
@@ -271,6 +274,7 @@ public class ClientWorker implements Closeable {
                 params.put("group", group);
                 params.put("tenant", tenant);
             }
+            // 通过远程读取
             result = agent.httpGet(Constants.CONFIG_CONTROLLER_PATH, null, params, agent.getEncode(), readTimeout);
         } catch (Exception ex) {
             String message = String
@@ -365,12 +369,15 @@ public class ClientWorker implements Closeable {
      */
     public void checkConfigInfo() {
         // Dispatch taskes.
+        // 监听配置的数量
         int listenerSize = cacheMap.size();
         // Round up the longingTaskCount.
+        // 长轮询任务的数量
         int longingTaskCount = (int) Math.ceil(listenerSize / ParamUtil.getPerTaskConfigSize());
         if (longingTaskCount > currentLongingTaskCount) {
             for (int i = (int) currentLongingTaskCount; i < longingTaskCount; i++) {
                 // The task list is no order.So it maybe has issues when changing.
+                // 执行长轮询任务，任务先后没有顺序
                 executorService.execute(new LongPollingRunnable(i));
             }
             currentLongingTaskCount = longingTaskCount;
@@ -387,6 +394,7 @@ public class ClientWorker implements Closeable {
      */
     List<String> checkUpdateDataIds(List<CacheData> cacheDatas, List<String> inInitializingCacheList) throws Exception {
         StringBuilder sb = new StringBuilder();
+        // 构造配置的md5格式
         for (CacheData cacheData : cacheDatas) {
             if (!cacheData.isUseLocalConfigInfo()) {
                 sb.append(cacheData.dataId).append(WORD_SEPARATOR);
@@ -405,6 +413,7 @@ public class ClientWorker implements Closeable {
             }
         }
         boolean isInitializingCacheList = !inInitializingCacheList.isEmpty();
+        // 远程检查更新
         return checkUpdateConfigStr(sb.toString(), isInitializingCacheList);
     }
     
@@ -435,14 +444,16 @@ public class ClientWorker implements Closeable {
         try {
             // In order to prevent the server from handling the delay of the client's long task,
             // increase the client's read timeout to avoid this problem.
-            
+            // 延长客户端超时时间
             long readTimeoutMs = timeout + (long) Math.round(timeout >> 1);
+            // 拉取变更的配置key信息
             HttpRestResult<String> result = agent
                     .httpPost(Constants.CONFIG_CONTROLLER_PATH + "/listener", headers, params, agent.getEncode(),
                             readTimeoutMs);
             
             if (result.ok()) {
                 setHealthServer(true);
+                // 解析配置key信息
                 return parseUpdateDataIdResponse(result.getData());
             } else {
                 setHealthServer(false);
@@ -506,7 +517,7 @@ public class ClientWorker implements Closeable {
         this.configFilterChainManager = configFilterChainManager;
         
         // Initialize the timeout parameter
-        
+        // 初始化超时参数等配置
         init(properties);
         
         this.executor = Executors.newScheduledThreadPool(1, new ThreadFactory() {
@@ -518,7 +529,8 @@ public class ClientWorker implements Closeable {
                 return t;
             }
         });
-        
+
+        // 长轮询工作线程
         this.executorService = Executors
                 .newScheduledThreadPool(Runtime.getRuntime().availableProcessors(), new ThreadFactory() {
                     @Override
@@ -534,6 +546,7 @@ public class ClientWorker implements Closeable {
             @Override
             public void run() {
                 try {
+                    // 定时检查配置信息，10毫秒一次
                     checkConfigInfo();
                 } catch (Throwable e) {
                     LOGGER.error("[" + agent.getName() + "] [sub-check] rotate check error", e);
@@ -579,10 +592,14 @@ public class ClientWorker implements Closeable {
             try {
                 // check failover config
                 for (CacheData cacheData : cacheMap.values()) {
+                    // 设置任务id
                     if (cacheData.getTaskId() == taskId) {
+                        // 任务id相同的才加入任务
                         cacheDatas.add(cacheData);
                         try {
+                            // 检查本地配置
                             checkLocalConfig(cacheData);
+                            // 如果使用本地配置
                             if (cacheData.isUseLocalConfigInfo()) {
                                 cacheData.checkListenerMd5();
                             }
@@ -593,11 +610,13 @@ public class ClientWorker implements Closeable {
                 }
                 
                 // check server config
+                // 获取变更的key
                 List<String> changedGroupKeys = checkUpdateDataIds(cacheDatas, inInitializingCacheList);
                 if (!CollectionUtils.isEmpty(changedGroupKeys)) {
                     LOGGER.info("get changedGroupKeys:" + changedGroupKeys);
                 }
-                
+
+                // 通过key获取具体的配置
                 for (String groupKey : changedGroupKeys) {
                     String[] key = GroupKey.parseKey(groupKey);
                     String dataId = key[0];
@@ -607,6 +626,7 @@ public class ClientWorker implements Closeable {
                         tenant = key[2];
                     }
                     try {
+                        // 获取具体的配置
                         String[] ct = getServerConfig(dataId, group, tenant, 3000L);
                         CacheData cache = cacheMap.get(GroupKey.getKeyTenant(dataId, group, tenant));
                         cache.setContent(ct[0]);
@@ -623,6 +643,7 @@ public class ClientWorker implements Closeable {
                         LOGGER.error(message, ioe);
                     }
                 }
+                // 判断是否已经变更，触发通知更改配置事件
                 for (CacheData cacheData : cacheDatas) {
                     if (!cacheData.isInitializing() || inInitializingCacheList
                             .contains(GroupKey.getKeyTenant(cacheData.dataId, cacheData.group, cacheData.tenant))) {

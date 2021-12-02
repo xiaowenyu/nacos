@@ -178,6 +178,7 @@ public class CacheData {
     void checkListenerMd5() {
         for (ManagerListenerWrap wrap : listeners) {
             if (!md5.equals(wrap.lastCallMd5)) {
+                // 检查md5 并触发监听事件
                 safeNotifyListener(dataId, group, content, type, md5, wrap);
             }
         }
@@ -210,14 +211,18 @@ public class CacheData {
                     listener.receiveConfigInfo(contentTmp);
                     
                     // compare lastContent and content
+                    // 对比内容
                     if (listener instanceof AbstractConfigChangeListener) {
+                        // 解析更改的数据
                         Map data = ConfigChangeHandler.getInstance()
                                 .parseChangeData(listenerWrap.lastContent, content, type);
+                        // 触发事件修改事件
                         ConfigChangeEvent event = new ConfigChangeEvent(data);
                         ((AbstractConfigChangeListener) listener).receiveConfigChange(event);
                         listenerWrap.lastContent = content;
                     }
-                    
+
+                    // 修改成功，替换md5
                     listenerWrap.lastCallMd5 = md5;
                     LOGGER.info("[{}] [notify-ok] dataId={}, group={}, md5={}, listener={} ", name, dataId, group, md5,
                             listener);

@@ -50,6 +50,7 @@ import java.util.Properties;
  *
  * @author Nacos
  */
+// 客户端配置服务的入口
 @SuppressWarnings("PMD.ServiceOrDaoClassShouldEndWithImplRule")
 public class NacosConfigService implements ConfigService {
     
@@ -92,12 +93,14 @@ public class NacosConfigService implements ConfigService {
         namespace = ParamUtil.parseNamespace(properties);
         properties.put(PropertyKeyConst.NAMESPACE, namespace);
     }
-    
+
+    // 获取配置
     @Override
     public String getConfig(String dataId, String group, long timeoutMs) throws NacosException {
         return getConfigInner(namespace, dataId, group, timeoutMs);
     }
-    
+
+    // 获取配置以及摘要的监听
     @Override
     public String getConfigAndSignListener(String dataId, String group, long timeoutMs, Listener listener)
             throws NacosException {
@@ -110,7 +113,8 @@ public class NacosConfigService implements ConfigService {
     public void addListener(String dataId, String group, Listener listener) throws NacosException {
         worker.addTenantListeners(dataId, group, Arrays.asList(listener));
     }
-    
+
+    // 发布配置
     @Override
     public boolean publishConfig(String dataId, String group, String content) throws NacosException {
         return publishConfig(dataId, group, content, ConfigType.getDefaultType().getType());
@@ -152,6 +156,7 @@ public class NacosConfigService implements ConfigService {
         }
         
         try {
+            // 本地没有
             String[] ct = worker.getServerConfig(dataId, group, tenant, timeoutMs);
             cr.setContent(ct[0]);
             

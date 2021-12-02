@@ -66,6 +66,7 @@ public class ConfigChangeHandler {
      */
     public Map parseChangeData(String oldContent, String newContent, String type) throws IOException {
         for (ConfigChangeParser changeParser : this.parserList) {
+            // yml或者proerties的解析方式，已yml为例
             if (changeParser.isResponsibleFor(type)) {
                 return changeParser.doParse(oldContent, newContent, type);
             }

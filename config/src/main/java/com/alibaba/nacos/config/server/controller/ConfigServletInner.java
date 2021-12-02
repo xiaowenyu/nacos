@@ -79,11 +79,13 @@ public class ConfigServletInner {
             Map<String, String> clientMd5Map, int probeRequestSize) throws IOException {
         
         // Long polling.
+        // 是否支持长轮询
         if (LongPollingService.isSupportLongPolling(request)) {
             longPollingService.addLongPollingClient(request, response, clientMd5Map, probeRequestSize);
             return HttpServletResponse.SC_OK + "";
         }
-        
+
+        // 兼容短轮询逻辑
         // Compatible with short polling logic.
         List<String> changedGroups = MD5Util.compareMd5(request, response, clientMd5Map);
         
@@ -98,6 +100,7 @@ public class ConfigServletInner {
         int versionNum = Protocol.getVersionNumber(version);
         
         // Befor 2.0.4 version, return value is put into header.
+        // 长轮询版本
         if (versionNum < START_LONG_POLLING_VERSION_NUM) {
             response.addHeader(Constants.PROBE_MODIFY_RESPONSE, oldResult);
             response.addHeader(Constants.PROBE_MODIFY_RESPONSE_NEW, newResult);
@@ -123,6 +126,7 @@ public class ConfigServletInner {
         final String groupKey = GroupKey2.getKey(dataId, group, tenant);
         String autoTag = request.getHeader("Vipserver-Tag");
         String requestIpApp = RequestUtil.getAppName(request);
+        // 锁住配置
         int lockResult = tryConfigReadLock(groupKey);
         
         final String requestIp = RequestUtil.getRemoteIp(request);
@@ -133,6 +137,7 @@ public class ConfigServletInner {
             try {
                 String md5 = Constants.NULL;
                 long lastModified = 0L;
+                // 从缓存中拿出配置
                 CacheItem cacheItem = ConfigCacheService.getContentCache(groupKey);
                 if (cacheItem.isBeta() && cacheItem.getIps4Beta().contains(clientIp)) {
                     isBeta = true;

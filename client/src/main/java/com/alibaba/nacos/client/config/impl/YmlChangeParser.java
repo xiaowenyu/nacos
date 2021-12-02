@@ -47,6 +47,7 @@ public class YmlChangeParser extends AbstractConfigChangeParser {
     public Map<String, ConfigChangeItem> doParse(String oldContent, String newContent, String type) {
         Map<String, Object> oldMap = Collections.emptyMap();
         Map<String, Object> newMap = Collections.emptyMap();
+        // 处理成map
         try {
             Yaml yaml = new Yaml(new SafeConstructor());
             if (StringUtils.isNotBlank(oldContent)) {
@@ -60,7 +61,8 @@ public class YmlChangeParser extends AbstractConfigChangeParser {
         } catch (ConstructorException e) {
             handleYamlException(e);
         }
-        
+
+        // 分类增删改数据
         return filterChangeData(oldMap, newMap);
     }
     

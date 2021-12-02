@@ -129,7 +129,8 @@ public class ParamUtil {
     public static void setConnectTimeout(int connectTimeout) {
         ParamUtil.connectTimeout = connectTimeout;
     }
-    
+
+    // 默认3000个任务一批
     public static double getPerTaskConfigSize() {
         return perTaskConfigSize;
     }

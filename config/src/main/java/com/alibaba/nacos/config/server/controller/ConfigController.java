@@ -191,6 +191,7 @@ public class ConfigController {
      * @throws IOException      IOException.
      * @throws NacosException   NacosException.
      */
+    // 获取配置
     @GetMapping
     @Secured(action = ActionTypes.READ, parser = ConfigResourceParser.class)
     public void getConfig(HttpServletRequest request, HttpServletResponse response,
@@ -303,6 +304,7 @@ public class ConfigController {
      * The client listens for configuration changes.
      */
     @PostMapping("/listener")
+    // 判断配置是否有更改的监听方法
     @Secured(action = ActionTypes.READ, parser = ConfigResourceParser.class)
     public void listener(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -322,6 +324,7 @@ public class ConfigController {
         }
         
         // do long-polling
+        // 处理长轮询
         inner.doPollingConfig(request, response, clientMd5Map, probeModify.length());
     }
     

@@ -48,6 +48,7 @@ public class MD5Util {
     /**
      * Compare Md5.
      */
+    // 校验md5，判断是否改变
     public static List<String> compareMd5(HttpServletRequest request, HttpServletResponse response,
             Map<String, String> clientMd5Map) {
         List<String> changedGroupKeys = new ArrayList<String>();

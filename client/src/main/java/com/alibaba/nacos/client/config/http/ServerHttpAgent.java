@@ -95,6 +95,7 @@ public class ServerHttpAgent implements HttpAgent {
                     newHeaders.addAll(headers);
                 }
                 Query query = Query.newInstance().initParams(paramValues);
+                // 通过httpClient获取
                 HttpRestResult<String> result = NACOS_RESTTEMPLATE
                         .get(getUrl(currentServerAddr, path), httpConfig, newHeaders, query, String.class);
                 if (isFail(result)) {
