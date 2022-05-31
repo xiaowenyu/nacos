@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author nkorange
  * @since 1.0.0
  */
+// distro 存放方式
 @Component
 public class DataStore {
     

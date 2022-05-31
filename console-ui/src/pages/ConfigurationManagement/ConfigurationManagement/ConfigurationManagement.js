@@ -27,27 +27,28 @@ import {
   Form,
   Icon,
   Input,
-  Loading,
   Menu,
   Pagination,
   Select,
   Table,
-  Grid,
   Upload,
   Message,
+  MenuButton,
+  Box,
 } from '@alifd/next';
 import BatchHandle from 'components/BatchHandle';
 import RegionGroup from 'components/RegionGroup';
 import ShowCodeing from 'components/ShowCodeing';
 import DeleteDialog from 'components/DeleteDialog';
 import DashboardCard from './DashboardCard';
-import { getParams, setParams, request, aliwareIntl } from '@/globalLib';
+import { getParams, setParams, request } from '@/globalLib';
 import { connect } from 'react-redux';
 import { getConfigs } from '../../../reducers/configuration';
 
 import './index.scss';
 import { LANGUAGE_KEY, GLOBAL_PAGE_SIZE_LIST } from '../../../constants';
 
+const { Item } = MenuButton;
 const { Panel } = Collapse;
 const configsTableSelected = new Map();
 @connect(
@@ -160,47 +161,6 @@ class ConfigurationManagement extends React.Component {
 
   setIsCn() {
     this.setState({ isCn: localStorage.getItem(LANGUAGE_KEY) === 'zh-CN' });
-  }
-
-  /**
-   * 获取概览页数据
-   */
-  getContentList() {
-    request({
-      url: 'com.alibaba.nacos.service.dashlist', // 以 com.alibaba. 开头最终会转换为真正的url地址
-      data: {},
-      $data: {}, // 替换请求url路径中{}占位符的内容
-      success: res => {
-        if (res.code === 200 && res.data) {
-          if (res.data.length === 0) {
-            this.setState({
-              hasdash: false,
-            });
-          } else {
-            // 前端默认排序
-            let sortList = [];
-            for (let j = 0, len = res.data.length; j < len; j++) {
-              let item = res.data[j];
-              sortList.push({
-                k: item.appName || '' + item.group || '' + item.dataId || '',
-                v: item,
-              });
-            }
-            sortList.sort(function(a, b) {
-              return a.k.localeCompare(b.k);
-            });
-            let showList = [];
-            for (let j = 0, len = sortList.length; j < len; j++) {
-              showList.push(sortList[j].v);
-            }
-            this.setState({
-              hasdash: true,
-              contentList: showList,
-            });
-          }
-        }
-      },
-    });
   }
 
   toggleShowQuestionnaire(value) {
@@ -332,8 +292,6 @@ class ConfigurationManagement extends React.Component {
       });
   }
 
-  showMore() {}
-
   chooseNav(record, key) {
     const self = this;
     switch (key) {
@@ -396,10 +354,6 @@ class ConfigurationManagement extends React.Component {
         });
       },
     });
-  }
-
-  renderLastTime(value, index, record) {
-    return <div>{aliwareIntl.intlNumberFormat(record.lastModifiedTime)}</div>;
   }
 
   showCode(record) {
@@ -470,44 +424,6 @@ class ConfigurationManagement extends React.Component {
     this.setState({ pageSize }, () => this.changePage(1));
   }
 
-  chooseFieldChange(fieldValue) {
-    this.setState({
-      fieldValue,
-    });
-  }
-
-  showSelect(value) {
-    this.setState({
-      selectValue: value,
-    });
-    if (value.indexOf('appName') !== -1) {
-      this.setState({
-        showAppName: true,
-      });
-    } else {
-      this.setState({
-        showAppName: false,
-      });
-    }
-    if (value.indexOf('group') !== -1) {
-      this.setState({
-        showgroup: true,
-      });
-    } else {
-      this.setState({
-        showgroup: false,
-      });
-    }
-    this.chooseFieldChange(value);
-  }
-
-  getAppName(value) {
-    this.appName = value;
-    this.setState({
-      appName: value,
-    });
-  }
-
   setAppName(value) {
     this.appName = value;
     this.setState({
@@ -537,21 +453,6 @@ class ConfigurationManagement extends React.Component {
     setParams('group', this.group);
     setParams('appName', this.appName);
     this.getData();
-  }
-
-  resetAll() {
-    this.dataId = '';
-    this.appName = '';
-    this.group = '';
-    this.setState({
-      selectValue: [],
-      dataId: '',
-      appName: '',
-      group: '',
-      showAppName: false,
-      showgroup: false,
-    });
-    this.selectAll();
   }
 
   chooseEnv(value) {
@@ -598,103 +499,11 @@ class ConfigurationManagement extends React.Component {
     );
   }
 
-  goConfigSync(record) {
-    this.serverId = getParams('serverId') || 'center';
-    this.tenant = getParams('namespace') || ''; // 为当前实例保存tenant参数
-    this.props.history.push(
-      `/configsync?serverId=${this.serverId || ''}&dataId=${record.dataId}&group=${
-        record.group
-      }&namespace=${this.tenant}`
-    );
-  }
-
-  onSelectChange(...args) {
-    const record = [];
-    args[1].forEach(item => {
-      if (args[0].indexOf(item.id) >= 0 && this.state.selectedKeys.indexOf(item.id) < 0) {
-        record.push(item);
-      }
-    });
-    this.state.selectedRecord.forEach(item => {
-      if (args[0].indexOf(item.id) >= 0) {
-        record.push(item);
-      }
-    });
-    this.setState({
-      selectedRecord: record,
-      selectedKeys: args[0],
-      isCheckAll: record.length > 0 && record.length === this.state.dataSource.length,
-    });
-  }
-
-  getBatchFailedContent(res) {
-    const { locale = {} } = this.props;
-    return (
-      <div>
-        <div style={{ fontSize: 18, color: '#373D41', overflow: 'auto' }}>{res.message}</div>
-        {'data' in res && res.data != null && (
-          <Collapse style={{ width: '500px' }}>
-            {'failedItems' in res.data && res.data.failedItems.length > 0 ? (
-              <Panel title={locale.failedEntry + res.data.failedItems.length}>
-                <Table dataSource={res.data.failedItems} fixedHeader>
-                  <Table.Column title={'Data ID'} dataIndex={'dataId'} />
-                  <Table.Column title={'Group'} dataIndex={'group'} />
-                </Table>
-              </Panel>
-            ) : (
-              <Panel style={{ display: 'none' }} />
-            )}
-            {'succeededItems' in res.data && res.data.succeededItems.length > 0 ? (
-              <Panel title={locale.successfulEntry + res.data.succeededItems.length}>
-                <Table dataSource={res.data.succeededItems} fixedHeader>
-                  <Table.Column title={'Data ID'} dataIndex={'dataId'} />
-                  <Table.Column title={'Group'} dataIndex={'group'} />
-                </Table>
-              </Panel>
-            ) : (
-              <Panel style={{ display: 'none' }} />
-            )}
-            {'unprocessedItems' in res.data && res.data.unprocessedItems.length > 0 ? (
-              <Panel title={locale.unprocessedEntry + res.data.unprocessedItems.length}>
-                <Table dataSource={res.data.unprocessedItems} fixedHeader>
-                  <Table.Column title={'Data ID'} dataIndex={'dataId'} />
-                  <Table.Column title={'Group'} dataIndex={'group'} />
-                </Table>
-              </Panel>
-            ) : (
-              <Panel style={{ display: 'none' }} />
-            )}
-          </Collapse>
-        )}
-      </div>
-    );
-  }
-
-  onClickBatchHandle() {
-    this.batchHandle &&
-      this.batchHandle.openDialog({
-        serverId: this.serverId,
-        group: this.group,
-        dataId: this.dataId,
-        appName: this.appName,
-        config_tags: this.state.config_tags || '',
-        pageSize: this.state.pageSize,
-      });
-  }
-
   changeAdvancedQuery = () => {
     this.setState({
       isAdvancedQuery: !this.state.isAdvancedQuery,
     });
   };
-
-  checkAllHandle(checked) {
-    this.setState({
-      isCheckAll: checked,
-      selectedKeys: checked ? this.state.dataSource.map(item => item.id) : [],
-      selectedRecord: checked ? this.state.dataSource : [],
-    });
-  }
 
   openUri(url, params) {
     window.open(
@@ -709,7 +518,7 @@ class ConfigurationManagement extends React.Component {
 
   exportData() {
     const { group, appName, dataId, openUri } = this;
-    const { accessToken = '' } = JSON.parse(localStorage.token || '{}');
+    const { accessToken = '', username = '' } = JSON.parse(localStorage.token || '{}');
     openUri('v1/cs/configs', {
       export: 'true',
       tenant: getParams('namespace'),
@@ -718,13 +527,29 @@ class ConfigurationManagement extends React.Component {
       dataId,
       ids: '',
       accessToken,
+      username,
     });
   }
 
-  exportSelectedData() {
+  exportDataNew() {
+    const { group, appName, dataId, openUri } = this;
+    const { accessToken = '', username = '' } = JSON.parse(localStorage.token || '{}');
+    openUri('v1/cs/configs', {
+      exportV2: 'true',
+      tenant: getParams('namespace'),
+      group,
+      appName,
+      dataId,
+      ids: '',
+      accessToken,
+      username,
+    });
+  }
+
+  exportSelectedData(newVersion) {
     const ids = [];
     const { locale = {} } = this.props;
-    const { accessToken = '' } = JSON.parse(localStorage.token || '{}');
+    const { accessToken = '', username = '' } = JSON.parse(localStorage.token || '{}');
     if (!configsTableSelected.size) {
       Dialog.alert({
         title: locale.exportSelectedAlertTitle,
@@ -733,14 +558,27 @@ class ConfigurationManagement extends React.Component {
       return;
     }
     configsTableSelected.forEach((value, key, map) => ids.push(key));
-    this.openUri('v1/cs/configs', {
-      export: 'true',
-      tenant: '',
-      group: '',
-      appName: '',
-      ids: ids.join(','),
-      accessToken,
-    });
+    if (newVersion) {
+      this.openUri('v1/cs/configs', {
+        exportV2: 'true',
+        tenant: '',
+        group: '',
+        appName: '',
+        ids: ids.join(','),
+        accessToken,
+        username,
+      });
+    } else {
+      this.openUri('v1/cs/configs', {
+        export: 'true',
+        tenant: '',
+        group: '',
+        appName: '',
+        ids: ids.join(','),
+        accessToken,
+        username,
+      });
+    }
   }
 
   multipleSelectionDeletion() {
@@ -771,9 +609,10 @@ class ConfigurationManagement extends React.Component {
           </div>
         ),
         onOk: () => {
-          const url = `v1/cs/configs?delType=ids&ids=${Array.from(configsTableSelected.keys()).join(
-            ','
-          )}`;
+          const url =
+            `v1/cs/configs?delType=ids&ids=${Array.from(configsTableSelected.keys()).join(
+              ','
+            )}&tenant=` + self.state.nownamespace_id;
           request({
             url,
             type: 'delete',
@@ -1125,12 +964,12 @@ class ConfigurationManagement extends React.Component {
       console.log(e);
       goLogin();
     }
-    const { accessToken = '' } = token;
+    const { accessToken = '', username = '' } = token;
     const uploadProps = {
       accept: 'application/zip',
       action: `v1/cs/configs?import=true&namespace=${getParams(
         'namespace'
-      )}&accessToken=${accessToken}`,
+      )}&accessToken=${accessToken}&username=${username}`,
       headers: Object.assign({}, {}, { accessToken }),
       data: {
         policy: self.field.getValue('sameConfigPolicy'),
@@ -1294,7 +1133,7 @@ class ConfigurationManagement extends React.Component {
               <Form inline>
                 <Form.Item label="Data ID:">
                   <Input
-                    defaultValue={this.dataId}
+                    value={this.dataId}
                     htmlType="text"
                     placeholder={locale.fuzzyd}
                     style={{ width: 200 }}
@@ -1302,7 +1141,7 @@ class ConfigurationManagement extends React.Component {
                       this.dataId = dataId;
                       this.setState({ dataId });
                     }}
-                    onPressEnter={() => this.getData()}
+                    onPressEnter={() => this.selectAll()}
                   />
                 </Form.Item>
 
@@ -1314,7 +1153,7 @@ class ConfigurationManagement extends React.Component {
                     dataSource={this.state.groups}
                     value={this.state.group}
                     onChange={this.setGroup.bind(this)}
-                    onPressEnter={() => this.getData()}
+                    onPressEnter={() => this.selectAll()}
                     hasClear
                   />
                 </Form.Item>
@@ -1332,32 +1171,24 @@ class ConfigurationManagement extends React.Component {
                   style={
                     this.inApp
                       ? { display: 'none' }
-                      : { verticalAlign: 'middle', marginTop: 0, marginLeft: 10 }
+                      : { verticalAlign: 'middle', marginTop: 0, marginLeft: 0 }
                   }
                 >
-                  <div
-                    style={{ color: '#33cde5', fontSize: 12, cursor: 'pointer' }}
-                    onClick={this.changeAdvancedQuery}
-                  >
-                    <span style={{ marginRight: 5, lineHeight: '28px' }}>
-                      {locale.advancedQuery9}
-                    </span>
-                    <Icon
-                      type={this.state.isAdvancedQuery ? 'arrow-up-filling' : 'arrow-down-filling'}
-                      size={'xs'}
-                    />
-                  </div>
-                </Form.Item>
-                <Form.Item label={''}>
-                  <Button
-                    type={'primary'}
-                    style={{ marginRight: 10 }}
-                    onClick={this.exportData.bind(this)}
-                    data-spm-click={'gostr=/aliyun;locaid=configsExport'}
-                  >
-                    {locale.export}
+                  <Button onClick={this.changeAdvancedQuery}>
+                    {this.state.isAdvancedQuery ? (
+                      <>
+                        {locale.advancedQuery9}
+                        <Icon type="arrow-up" size="xs" style={{ marginLeft: '5px' }} />
+                      </>
+                    ) : (
+                      <>
+                        {locale.advancedQuery9}
+                        <Icon type="arrow-down" size="xs" style={{ marginLeft: '5px' }} />
+                      </>
+                    )}
                   </Button>
                 </Form.Item>
+
                 <Form.Item label={''}>
                   <Button
                     type={'primary'}
@@ -1446,11 +1277,7 @@ class ConfigurationManagement extends React.Component {
                       locaid: 'configsDelete',
                       onClick: () => this.multipleSelectionDeletion(),
                     },
-                    {
-                      text: locale.exportSelected,
-                      locaid: 'configsExport',
-                      onClick: () => this.exportSelectedData(),
-                    },
+
                     {
                       text: locale.clone,
                       locaid: 'configsDelete',
@@ -1467,6 +1294,38 @@ class ConfigurationManagement extends React.Component {
                       {item.text}
                     </Button>
                   ))}
+                  <MenuButton
+                    type="primary"
+                    label={locale.exportBtn}
+                    popupStyle={{ minWidth: 150 }}
+                  >
+                    {[
+                      {
+                        text: locale.export,
+                        locaid: 'exportData',
+                        onClick: () => this.exportData(this),
+                      },
+                      {
+                        text: locale.newExport,
+                        locaid: 'exportDataNew',
+                        onClick: () => this.exportDataNew(this),
+                      },
+                      {
+                        text: locale.exportSelected,
+                        locaid: 'configsExport',
+                        onClick: () => this.exportSelectedData(false),
+                      },
+                      {
+                        text: locale.newExportSelected,
+                        locaid: 'configsExport',
+                        onClick: () => this.exportSelectedData(true),
+                      },
+                    ].map((item, index) => (
+                      <Item key={item.text} style={{ minWidth: 150 }} onClick={item.onClick}>
+                        {item.text}
+                      </Item>
+                    ))}
+                  </MenuButton>
                 </div>
                 <Pagination
                   style={{ float: 'right' }}

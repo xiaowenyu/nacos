@@ -49,7 +49,7 @@ import java.util.Map;
  * @since 1.0.0
  */
 @RestController
-@RequestMapping(UtilsAndCommons.NACOS_NAMING_CONTEXT + "/distro")
+@RequestMapping(UtilsAndCommons.NACOS_NAMING_CONTEXT + UtilsAndCommons.NACOS_NAMING_PARTITION_CONTEXT)
 public class DistroController {
     
     @Autowired
@@ -68,6 +68,7 @@ public class DistroController {
      * @return 'ok' if success
      * @throws Exception if failed
      */
+    // 同步实例数据
     @PutMapping("/datum")
     public ResponseEntity onSyncDatum(@RequestBody Map<String, Datum<Instances>> dataMap) throws Exception {
         
@@ -77,14 +78,17 @@ public class DistroController {
         }
         
         for (Map.Entry<String, Datum<Instances>> entry : dataMap.entrySet()) {
+            // 满足临时实例的数据
             if (KeyBuilder.matchEphemeralInstanceListKey(entry.getKey())) {
                 String namespaceId = KeyBuilder.getNamespace(entry.getKey());
                 String serviceName = KeyBuilder.getServiceName(entry.getKey());
+                // 没有服务则创建服务
                 if (!serviceManager.containService(namespaceId, serviceName) && switchDomain
                         .isDefaultInstanceEphemeral()) {
                     serviceManager.createEmptyService(namespaceId, serviceName, true);
                 }
                 DistroHttpData distroHttpData = new DistroHttpData(createDistroKey(entry.getKey()), entry.getValue());
+                // 接收数据事件
                 distroProtocol.onReceive(distroHttpData);
             }
         }
@@ -101,7 +105,7 @@ public class DistroController {
     @PutMapping("/checksum")
     public ResponseEntity syncChecksum(@RequestParam String source, @RequestBody Map<String, String> dataMap) {
         DistroHttpData distroHttpData = new DistroHttpData(createDistroKey(source), dataMap);
-        distroProtocol.onVerify(distroHttpData);
+        distroProtocol.onVerify(distroHttpData, source);
         return ResponseEntity.ok("ok");
     }
     

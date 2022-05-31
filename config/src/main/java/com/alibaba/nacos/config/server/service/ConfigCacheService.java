@@ -27,7 +27,7 @@ import com.alibaba.nacos.config.server.utils.DiskUtil;
 import com.alibaba.nacos.config.server.utils.GroupKey;
 import com.alibaba.nacos.config.server.utils.GroupKey2;
 import com.alibaba.nacos.config.server.utils.PropertyUtil;
-import org.apache.commons.lang3.StringUtils;
+import com.alibaba.nacos.common.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +52,21 @@ import static com.alibaba.nacos.config.server.utils.LogUtil.DEFAULT_LOG;
  * @author Nacos
  */
 public class ConfigCacheService {
+
+    static final Logger LOGGER = LoggerFactory.getLogger(ConfigCacheService.class);
+
+    private static final String NO_SPACE_CN = "设备上没有空间";
+
+    private static final String NO_SPACE_EN = "No space left on device";
+
+    private static final String DISK_QUATA_CN = "超出磁盘限额";
+
+    private static final String DISK_QUATA_EN = "Disk quota exceeded";
+
+    /**
+     * groupKey -> cacheItem.
+     */
+    private static final ConcurrentHashMap<String, CacheItem> CACHE = new ConcurrentHashMap<>();
     
     @Autowired
     private static PersistService persistService;
@@ -101,7 +116,7 @@ public class ConfigCacheService {
             updateMd5(groupKey, md5, lastModifiedTs);
             return true;
         } catch (IOException ioe) {
-            DUMP_LOG.error("[dump-exception] save disk error. " + groupKey + ", " + ioe.toString(), ioe);
+            DUMP_LOG.error("[dump-exception] save disk error. " + groupKey + ", " + ioe);
             if (ioe.getMessage() != null) {
                 String errMsg = ioe.getMessage();
                 if (NO_SPACE_CN.equals(errMsg) || NO_SPACE_EN.equals(errMsg) || errMsg.contains(DISK_QUATA_CN) || errMsg
@@ -155,7 +170,7 @@ public class ConfigCacheService {
             updateBetaMd5(groupKey, md5, Arrays.asList(betaIpsArr), lastModifiedTs);
             return true;
         } catch (IOException ioe) {
-            DUMP_LOG.error("[dump-beta-exception] save disk error. " + groupKey + ", " + ioe.toString(), ioe);
+            DUMP_LOG.error("[dump-beta-exception] save disk error. " + groupKey + ", " + ioe);
             return false;
         } finally {
             releaseWriteLock(groupKey);
@@ -199,7 +214,7 @@ public class ConfigCacheService {
             updateTagMd5(groupKey, tag, md5, lastModifiedTs);
             return true;
         } catch (IOException ioe) {
-            DUMP_LOG.error("[dump-tag-exception] save disk error. " + groupKey + ", " + ioe.toString(), ioe);
+            DUMP_LOG.error("[dump-tag-exception] save disk error. " + groupKey + ", " + ioe);
             return false;
         } finally {
             releaseWriteLock(groupKey);
@@ -231,8 +246,8 @@ public class ConfigCacheService {
         try {
             final String md5 = MD5Utils.md5Hex(content, Constants.ENCODE);
             if (!PropertyUtil.isDirectRead()) {
-                String loacalMd5 = DiskUtil.getLocalConfigMd5(dataId, group, tenant);
-                if (md5.equals(loacalMd5)) {
+                String localMd5 = DiskUtil.getLocalConfigMd5(dataId, group, tenant);
+                if (md5.equals(localMd5)) {
                     DUMP_LOG.warn("[dump-ignore] ignore to save cache file. groupKey={}, md5={}, lastModifiedOld={}, "
                                     + "lastModifiedNew={}", groupKey, md5, ConfigCacheService.getLastModifiedTs(groupKey),
                             lastModifiedTs);
@@ -243,7 +258,7 @@ public class ConfigCacheService {
             updateMd5(groupKey, md5, lastModifiedTs);
             return true;
         } catch (IOException ioe) {
-            DUMP_LOG.error("[dump-exception] save disk error. " + groupKey + ", " + ioe.toString(), ioe);
+            DUMP_LOG.error("[dump-exception] save disk error. " + groupKey + ", " + ioe);
             return false;
         } finally {
             releaseWriteLock(groupKey);
@@ -501,11 +516,11 @@ public class ConfigCacheService {
     public static void updateTagMd5(String groupKey, String tag, String md5, long lastModifiedTs) {
         CacheItem cache = makeSure(groupKey);
         if (cache.tagMd5 == null) {
-            Map<String, String> tagMd5Tmp = new HashMap<String, String>(1);
+            Map<String, String> tagMd5Tmp = new HashMap<>(1);
             tagMd5Tmp.put(tag, md5);
             cache.tagMd5 = tagMd5Tmp;
             if (cache.tagLastModifiedTs == null) {
-                Map<String, Long> tagLastModifiedTsTmp = new HashMap<String, Long>(1);
+                Map<String, Long> tagLastModifiedTsTmp = new HashMap<>(1);
                 tagLastModifiedTsTmp.put(tag, lastModifiedTs);
                 cache.tagLastModifiedTs = tagLastModifiedTsTmp;
             } else {
@@ -666,20 +681,5 @@ public class ConfigCacheService {
         item = CACHE.putIfAbsent(groupKey, tmp);
         return (null == item) ? tmp : item;
     }
-    
-    private static final String NO_SPACE_CN = "设备上没有空间";
-    
-    private static final String NO_SPACE_EN = "No space left on device";
-    
-    private static final String DISK_QUATA_CN = "超出磁盘限额";
-    
-    private static final String DISK_QUATA_EN = "Disk quota exceeded";
-    
-    static final Logger LOGGER = LoggerFactory.getLogger(ConfigCacheService.class);
-    
-    /**
-     * groupKey -> cacheItem.
-     */
-    private static final ConcurrentHashMap<String, CacheItem> CACHE = new ConcurrentHashMap<String, CacheItem>();
 }
 

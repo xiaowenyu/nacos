@@ -19,6 +19,8 @@ package com.alibaba.nacos.core.cluster;
 import com.alibaba.nacos.common.notify.Event;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 
 /**
  * Publish this event when the node list changes，All interested in the node list change event can listen to this event.
@@ -31,11 +33,22 @@ import java.util.Collection;
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
  */
+// 节点关系事件
 public class MembersChangeEvent extends Event {
     
     private static final long serialVersionUID = 7308126651076668976L;
     
-    private Collection<Member> members;
+    private final Collection<Member> members;
+    
+    private final Collection<Member> triggers;
+    
+    private MembersChangeEvent(Collection<Member> members, Collection<Member> triggers) {
+        this.members = members;
+        this.triggers = new HashSet<>();
+        if (triggers != null) {
+            this.triggers.addAll(triggers);
+        }
+    }
     
     public static MemberChangeEventBuilder builder() {
         return new MemberChangeEventBuilder();
@@ -45,19 +58,25 @@ public class MembersChangeEvent extends Event {
         return members;
     }
     
-    public void setMembers(Collection<Member> members) {
-        this.members = members;
+    public boolean hasTriggers() {
+        return !triggers.isEmpty();
+    }
+    
+    public Collection<Member> getTriggers() {
+        return triggers;
     }
     
     @Override
     public String toString() {
-        return "MembersChangeEvent{" + "members=" + members + ", no=" + sequence() + '}';
+        return "MembersChangeEvent{" + "members=" + members + ", triggers=" + triggers + ", no=" + sequence() + '}';
     }
     
     public static final class MemberChangeEventBuilder {
         
         private Collection<Member> allMembers;
         
+        private Collection<Member> triggers;
+    
         private MemberChangeEventBuilder() {
         }
         
@@ -66,15 +85,23 @@ public class MembersChangeEvent extends Event {
             return this;
         }
         
+        public MemberChangeEventBuilder triggers(Collection<Member> triggers) {
+            this.triggers = triggers;
+            return this;
+        }
+        
+        public MemberChangeEventBuilder trigger(Member trigger) {
+            this.triggers = Collections.singleton(trigger);
+            return this;
+        }
+    
         /**
          * build MemberChangeEvent.
          *
          * @return {@link MembersChangeEvent}
          */
         public MembersChangeEvent build() {
-            MembersChangeEvent membersChangeEvent = new MembersChangeEvent();
-            membersChangeEvent.setMembers(allMembers);
-            return membersChangeEvent;
+            return new MembersChangeEvent(allMembers, triggers);
         }
     }
 }

@@ -97,6 +97,7 @@ class ServiceList extends React.Component {
     ];
     this.openLoading();
     request({
+      // 获取服务列表
       url: `v1/ns/catalog/services?${parameter.join('&')}`,
       success: ({ count = 0, serviceList = [] } = {}) => {
         this.setState({

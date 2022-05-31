@@ -123,7 +123,6 @@ public class NamingUtils {
      * @param instance need checked instance
      * @throws NacosException if check failed, throw exception
      */
-    // 心跳间隔必须小于 心跳超时时间和ip超时删除时间
     public static void checkInstanceIsLegal(Instance instance) throws NacosException {
         if (instance.getInstanceHeartBeatTimeOut() < instance.getInstanceHeartBeatInterval()
                 || instance.getIpDeleteTimeout() < instance.getInstanceHeartBeatInterval()) {

@@ -66,8 +66,7 @@ public abstract class AbstractConfigChangeParser implements ConfigChangeParser {
                 result.put(e.getKey(), cci);
             }
         }
-
-        // 分类增删改数据
+        
         return result;
     }
     

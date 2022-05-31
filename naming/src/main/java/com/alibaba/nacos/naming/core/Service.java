@@ -17,10 +17,13 @@
 package com.alibaba.nacos.naming.core;
 
 import com.alibaba.nacos.api.common.Constants;
+import com.alibaba.nacos.api.selector.Selector;
 import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.MD5Utils;
+import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.naming.consistency.KeyBuilder;
 import com.alibaba.nacos.naming.consistency.RecordListener;
+import com.alibaba.nacos.naming.core.v2.upgrade.doublewrite.delay.DoubleWriteEventListener;
 import com.alibaba.nacos.naming.healthcheck.ClientBeatCheckTask;
 import com.alibaba.nacos.naming.healthcheck.ClientBeatProcessor;
 import com.alibaba.nacos.naming.healthcheck.HealthCheckReactor;
@@ -28,16 +31,14 @@ import com.alibaba.nacos.naming.healthcheck.RsInfo;
 import com.alibaba.nacos.naming.misc.Loggers;
 import com.alibaba.nacos.naming.misc.UtilsAndCommons;
 import com.alibaba.nacos.naming.pojo.Record;
-import com.alibaba.nacos.naming.push.PushService;
+import com.alibaba.nacos.naming.push.UdpPushService;
 import com.alibaba.nacos.naming.selector.NoneSelector;
-import com.alibaba.nacos.naming.selector.Selector;
 import com.alibaba.nacos.sys.utils.ApplicationUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.ListUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,6 +53,7 @@ import java.util.Map;
  *
  * <p>We introduce a 'service --> cluster --> instance' model, in which service stores a list of clusters, which
  * contain a list of instances.
+ * 服务 -> 集群 -> 实例的方式
  *
  * <p>his class inherits from Service in API module and stores some fields that do not have to expose to client.
  *
@@ -106,8 +108,8 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
     }
     
     @JsonIgnore
-    public PushService getPushService() {
-        return ApplicationUtils.getBean(PushService.class);
+    public UdpPushService getPushService() {
+        return ApplicationUtils.getBean(UdpPushService.class);
     }
     
     public long getIpDeleteTimeout() {
@@ -183,7 +185,8 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
                 // Reject this abnormal instance list:
                 throw new RuntimeException("got null instance " + key);
             }
-            
+
+            // 修正权重
             if (instance.getWeight() > 10000.0D) {
                 instance.setWeight(10000.0D);
             }
@@ -278,10 +281,11 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
         
         setLastModifiedMillis(System.currentTimeMillis());
         getPushService().serviceChanged(this);
+        ApplicationUtils.getBean(DoubleWriteEventListener.class).doubleWriteToV2(this, ephemeral);
         StringBuilder stringBuilder = new StringBuilder();
         
         for (Instance instance : allIPs()) {
-            stringBuilder.append(instance.toIpAddr()).append("_").append(instance.isHealthy()).append(",");
+            stringBuilder.append(instance.toIpAddr()).append('_').append(instance.isHealthy()).append(',');
         }
         
         Loggers.EVT_LOG.info("[IP-UPDATED] namespace: {}, service: {}, ips: {}", getNamespaceId(), getName(),
@@ -293,8 +297,9 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
      * Init service.
      */
     public void init() {
-        // 心跳检查 5秒钟一次
+        // 客户端心跳检查是否死活，仅判断，非远程
         HealthCheckReactor.scheduleCheck(clientBeatCheckTask);
+        // 服务的集群对象
         for (Map.Entry<String, Cluster> entry : clusterMap.entrySet()) {
             entry.getValue().setService(this);
             entry.getValue().init();
@@ -311,6 +316,8 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
             entry.getValue().destroy();
         }
         HealthCheckReactor.cancelCheck(clientBeatCheckTask);
+        ApplicationUtils.getBean(DoubleWriteEventListener.class)
+                .doubleWriteMetadataToV2(this, this.allIPs(false).isEmpty(), true);
     }
     
     /**
@@ -366,13 +373,11 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
     public List<Instance> allIPs(List<String> clusters) {
         List<Instance> result = new ArrayList<>();
         for (String cluster : clusters) {
-            // 通过集群节点获取ip
             Cluster clusterObj = clusterMap.get(cluster);
             if (clusterObj == null) {
                 continue;
             }
-
-            // 收集ip
+            
             result.addAll(clusterObj.allIPs());
         }
         return result;
@@ -525,6 +530,8 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
         Loggers.SRV_LOG.info("cluster size, new: {}, old: {}", getClusterMap().size(), vDom.getClusterMap().size());
         
         recalculateChecksum();
+        ApplicationUtils.getBean(DoubleWriteEventListener.class)
+                .doubleWriteMetadataToV2(this, vDom.allIPs(false).isEmpty(), false);
     }
     
     @Override
@@ -557,7 +564,7 @@ public class Service extends com.alibaba.nacos.api.naming.pojo.Service implement
             String string = ip.getIp() + ":" + ip.getPort() + "_" + ip.getWeight() + "_" + ip.isHealthy() + "_" + ip
                     .getClusterName();
             ipsString.append(string);
-            ipsString.append(",");
+            ipsString.append(',');
         }
         
         checksum = MD5Utils.md5Hex(ipsString.toString(), Constants.ENCODE);

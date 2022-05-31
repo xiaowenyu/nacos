@@ -17,7 +17,7 @@
 package com.alibaba.nacos.naming.consistency;
 
 import com.alibaba.nacos.naming.misc.UtilsAndCommons;
-import org.apache.commons.lang3.StringUtils;
+import com.alibaba.nacos.common.utils.StringUtils;
 
 import static com.alibaba.nacos.naming.misc.UtilsAndCommons.RAFT_CACHE_FILE_PREFIX;
 
@@ -28,9 +28,9 @@ import static com.alibaba.nacos.naming.misc.UtilsAndCommons.RAFT_CACHE_FILE_PREF
  * @since 1.0.0
  */
 public class KeyBuilder {
-    
+
+
     public static final String NAMESPACE_KEY_CONNECTOR = "##";
-    
     private static final String EPHEMERAL_KEY_PREFIX = "ephemeral.";
     
     public static final String SERVICE_META_KEY_PREFIX = "com.alibaba.nacos.naming.domains.meta.";
@@ -41,10 +41,16 @@ public class KeyBuilder {
     
     public static final String BRIEF_INSTANCE_LIST_KEY_PREFIX = "iplist.";
     
+    public static final String RESOURCE_KEY_SNAPSHOT = "snapshot";
+    
+    public static final String RESOURCE_KEY_CHECKSUM = "checksum";
+
+    // com.alibaba.nacos.naming.iplist.ephemeral.{namespaceId}.##.{serviceName}
     private static String buildEphemeralInstanceListKey(String namespaceId, String serviceName) {
         return INSTANCE_LIST_KEY_PREFIX + EPHEMERAL_KEY_PREFIX + namespaceId + NAMESPACE_KEY_CONNECTOR + serviceName;
     }
-    
+
+    // com.alibaba.nacos.naming.iplist.{namespaceId}.##.{serviceName}
     private static String buildPersistentInstanceListKey(String namespaceId, String serviceName) {
         return INSTANCE_LIST_KEY_PREFIX + namespaceId + NAMESPACE_KEY_CONNECTOR + serviceName;
     }
@@ -58,7 +64,7 @@ public class KeyBuilder {
         return SERVICE_META_KEY_PREFIX + namespaceId + NAMESPACE_KEY_CONNECTOR + serviceName;
     }
     
-    public static String getSwitchDomainKey() {
+    public static String  getSwitchDomainKey() {
         return SERVICE_META_KEY_PREFIX + UtilsAndCommons.SWITCH_DOMAIN_NAME;
     }
     
